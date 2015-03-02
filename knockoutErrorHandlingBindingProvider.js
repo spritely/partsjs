@@ -1,46 +1,10 @@
-﻿define(function (require) {
+﻿define(function(require) {
     "use strict";
 
     var ko = require("knockout");
 
     // Better knockout binding error handling and reporting
-    // Derived from: http://stackoverflow.com/questions/13136678/knockoutjs-catch-errors-binding
-    var ErrorHandlingBindingProvider = function () {
-        var original = new ko.bindingProvider();
-
-        //determine if an element has any bindings
-        this.nodeHasBindings = original.nodeHasBindings;
-
-        //return the bindings given a node and the bindingContext
-        this.getBindingAccessors = function (node, bindingContext) {
-            var result = {};
-
-            //catch general errors parsing binding syntax
-            try {
-                result = original.getBindingAccessors(node, bindingContext);
-            } catch (e) {
-                knockoutErrorHandlingBindingProvider.log("Error in binding syntax: " + e.message, node);
-            }
-
-            //catch errors when actually evaluating the value of a binding
-            ko.utils.objectForEach(result, function (key, value) {
-                result[key] = function () {
-                    var result = null;
-
-                    try {
-                        result = value();
-                    } catch (e) {
-                        knockoutErrorHandlingBindingProvider.log("Error in \"" + key + "\" binding: " + e.message, node);
-                    }
-
-                    return result;
-                };
-            });
-
-            return result;
-        };
-    };
-
+    // Derived from: http://www.knockmeout.net/2013/06/knockout-debugging-strategies-plugin.html
     var knockoutErrorHandlingBindingProvider = {
         /**
          * All logging is performed via this call so consumers can choose to
@@ -49,7 +13,7 @@
          * @method log
          * @param {object} objects* The data to be logged.
          */
-        log: function () {
+        log: function() {
             try {
                 console.log(arguments);
             } catch (ignore) {
@@ -60,8 +24,22 @@
          * Sets up the binding provider by attaching it to knockout.
          * @method setup
          */
-        setup: function () {
-            ko.bindingProvider.instance = new ErrorHandlingBindingProvider();
+        setup: function() {
+            var existing = ko.bindingProvider.instance;
+
+            ko.bindingProvider.instance = {
+                nodeHasBindings: existing.nodeHasBindings,
+                getBindings: function(node, bindingContext) {
+                    var bindings;
+                    try {
+                        bindings = existing.getBindings(node, bindingContext);
+                    } catch (ex) {
+                        knockoutErrorHandlingBindingProvider.log("binding error", ex.message, node, bindingContext);
+                    }
+
+                    return bindings;
+                }
+            };
         }
     };
 

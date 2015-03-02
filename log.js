@@ -1,6 +1,22 @@
 ﻿define(function (require) {
     "use strict";
 
+    var safeToJSONString = function () {
+        try {
+            return log.toJSONString(arguments);
+        } catch (ex) {
+            try {
+                return JSON.stringify(arguments);
+            } catch (ex2) {
+                try {
+                    log.postLog(JSON.stringify(ex));
+                } catch (ex3) {
+                    console.log(ex, ex2, ex3);
+                }
+            }
+        }
+    };
+
     var log = {
         /**
          * Required. Default is a no-op so requests will not be processed without it.
@@ -34,8 +50,8 @@
          * @param {object} data - The data to log.
          */
         postLog: function (data) {
-            var serializedData = (typeof data == "string") ? data : log.toJSONString(data);
-            return ajax({
+            var serializedData = (typeof data == "string") ? data : safeToJSONString(data);
+            return log.ajax({
                 url: log.postLogUrl,
                 data: log.toJSONString({ data: serializedData }),
                 type: "POST",
