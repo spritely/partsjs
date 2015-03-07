@@ -16,7 +16,7 @@ define(function (require) {
          * @method redirect
          * @param {string} url - The location to redirect to.
          */
-        redirect: window.location.replace,
+        redirect: window.location.replace.bind(window.location),
 
         /**
          * Called  with all headers to give the system a chance to convert passed
@@ -51,7 +51,7 @@ define(function (require) {
          */
         on401: function () {
             if (typeof http.unauthorizedRedirect == "string" && http.unauthorizedRedirect.length > 0) {
-                redirect(http.unauthorizedRedirect);
+                http.redirect(http.unauthorizedRedirect);
             }
         },
 
@@ -64,7 +64,8 @@ define(function (require) {
          */
         log: function () {
             try {
-                console.log(arguments);
+                var args = (Array.prototype.slice.call(arguments));
+                console.log(args);
             } catch (ignore) {
             }
         },
@@ -86,7 +87,8 @@ define(function (require) {
          * @method fail
          */
         fail: function () {
-            http.log(arguments);
+            var args = (Array.prototype.slice.call(arguments));
+            http.log(args);
         },
 
         /**
@@ -99,13 +101,13 @@ define(function (require) {
          */
         post: function (url, data, headers) {
             http.log(url, data, headers);
-            return ajax({
+            return http.ajax({
                 url: url,
-                data: toJSONString(data),
+                data: http.toJSONString(data),
                 type: "POST",
                 contentType: "application/json",
                 dataType: "json",
-                headers: toJSONObject(headers),
+                headers: http.toJSONObject(headers),
                 statusCode: {
                     401: http.on401
                 }
