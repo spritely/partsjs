@@ -1,5 +1,5 @@
 define(function (require) {
-    "use strict";
+    'use strict';
 
     var http = {
         /**
@@ -8,7 +8,39 @@ define(function (require) {
          * interface is required, jquery itself is optional so as not to introduce
          * a required dependency to use this code.
          */
-        ajax: function () { },
+        ajax: function () {},
+
+        /**
+         * Maximum number of retries on http requests. Only used by getMaxRetries()
+         * If that method is overridden this value will be ignored (unless new
+         * implementation also uses maxRetries).
+         * Default value is 3.
+         */
+        maxRetries: 3,
+
+        /**
+         * Method responsible for determining the maximum number of retries.
+         * Default behavior is to return maxRetries.
+         * @method getMaxRetries
+         * @return {int} The maximum number of retries.
+         */
+        getMaxRetries: function () { return http.maxRetries; },
+
+        /**
+         * The delay between retries on http requests in milliseconds. Only used by
+         * getRetryDelay(). If that method is overridden this value will be ignored
+         * (unless new implementation also uses retryDelay).
+         * Default value is 500 milliseconds.
+         */
+        retryDelay: 500,
+
+        /**
+         * Method responsible for determining what the delay is between retries.
+         * It defaults to return retryDelay.
+         * @method getRetryDelay
+         * @return {int} The delay between retries in milliseconds.
+         */
+        getRetryDelay: function () { return 500; },
 
         /**
          * Method responsible for redirection. Default assumes code is executing
@@ -42,7 +74,7 @@ define(function (require) {
          * The url to redirect to when the server responds with 401 Unauthorized.
          * This value should be set or no 401s will be a no-op.
          */
-        unauthorizedRedirect: "",
+        unauthorizedRedirect: '',
 
         /**
          * http calls this whenever a request returns 401 Unauthorized.
@@ -50,7 +82,7 @@ define(function (require) {
          * @method on401
          */
         on401: function () {
-            if (typeof http.unauthorizedRedirect == "string" && http.unauthorizedRedirect.length > 0) {
+            if (typeof http.unauthorizedRedirect == 'string' && http.unauthorizedRedirect.length > 0) {
                 http.redirect(http.unauthorizedRedirect);
             }
         },
@@ -77,19 +109,16 @@ define(function (require) {
          * @method done
          */
         done: function (response) {
-            http.log("Loaded: ", response);
+            http.log('Loaded: ', response);
         },
 
         /**
          * http adds fail to all http request promises.
-         * By default it just calls log.
+         * By default it is a no-op.
          * It is designed to be easily replaceable with custom fail functionality.
          * @method fail
          */
-        fail: function () {
-            var args = (Array.prototype.slice.call(arguments));
-            http.log(args);
-        },
+        fail: function () {},
 
         /**
          * Makes an HTTP POST request with JSON data.
@@ -100,18 +129,31 @@ define(function (require) {
          * @return {Promise} A promise of the response data.
          */
         post: function (url, data, headers) {
+            var retries = 0;
+            var maxRetries = http.getMaxRetries();
+            var retryDelay = http.getRetryDelay();
+
             http.log(url, data, headers);
             return http.ajax({
                 url: url,
                 data: http.toJSONString(data),
-                type: "POST",
-                contentType: "application/json",
-                dataType: "json",
+                type: 'POST',
+                contentType: 'application/json',
+                dataType: 'json',
                 headers: http.toJSONObject(headers),
                 statusCode: {
                     401: http.on401
                 }
-            }).fail(http.fail).done(http.done);
+            }).fail(function () {
+                var args = (Array.prototype.slice.call(arguments));
+                http.log(args);
+
+                if (retries++ < maxRetries) {
+                    setTimeout(function () { http.post(url, data, headers) }, retryDelay);
+                } else {
+                    http.fail(args);
+                }
+            }).done(http.done);
         }
     };
 
