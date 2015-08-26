@@ -48,7 +48,7 @@ define(function (require) {
          * @method redirect
          * @param {string} url - The location to redirect to.
          */
-        redirect: window.location.replace.bind(window.location),
+        redirect: window.location.replace,
 
         /**
          * Called  with all headers to give the system a chance to convert passed
